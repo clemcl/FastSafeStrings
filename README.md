@@ -1,32 +1,34 @@
-# **FastSafeStrings**
+# FastSafeStrings
 
-**Safe, fast string handling for C and C++ — without the performance penalty.**
+**Fast, safe string handling for C and C++ — without repeated scanning.**
 
-**Processing 5,000,000 records: ~7× faster than standard C by eliminating repeated string scans.**
+FastSafeStrings improves performance by eliminating repeated string scans
+(`strlen`, `strcat`, delimiter searches) using length-aware strings.
 
-FastSafeStrings introduces a **descriptor-based string model** into C, inspired by PL/I-style dope vectors, and is designed to work naturally with **variable-blocked (VB) file formats**.
+In real workloads, this can be several times faster than typical C string handling.
 
-FastSafeStrings also includes a lightweight C++ wrapper, providing the same length-aware, bounds-safe model with a modern operator-based interface.
+---
 
-Together, they eliminate repeated string scanning and significantly improve real-world performance.
+## 🚀 Quick Example (C)
 
-FastSafeStrings improves performance by eliminating repeated string scans (strlen, strcat, etc.) using length-aware strings and records.
+```c
+#include "faststr.h"
 
-## Quick Start
+// Declare fixed-capacity strings (stack allocated)
+DCL(a,40);
+DCL(b,40);
 
-   DCL(a,40);
-   DCL(b,40);
+SET(a,"Hello ");
+SET(b,"World");
 
-   SET(a,"Hello ");
-   SET(b,"World");
+CAT(a,b);
 
-   CAT(a,b);
+printf("%s\n", a);
+```
 
-   printf("%s\n", a);
-  
-### C++ Example
+---
 
-FastSafeStrings also includes a lightweight C++ wrapper with a modern interface.
+## 🚀 C++ Example
 
 ```cpp
 #include <iostream>
@@ -47,158 +49,132 @@ int main()
     return 0;
 }
 ```
-This provides the same benefits as the C API:
 
-- O(1) length access  
-- safe bounded operations  
-- efficient append without scanning  
- 
-### Compared to std::string
+Features:
 
-Unlike `std::string`, FastSafeStrings:
+* O(1) length access
+* Safe bounded operations
+* Efficient append without scanning
 
-- uses fixed-capacity buffers (no allocations)
-- guarantees no buffer overruns
-- avoids repeated length scanning in string operations
- 
-  
-## **⚡ Performance**
+---
 
-## **🚀 Real-World Example**
+## ⚡ Performance
+
+### Real-world workload
 
 Processing **5,000,000 records (~35 bytes each)**:
 
-Standard C (fgets/strcat)        : 1.506 seconds  
-VB  FastSafeStrings              : 0.205 seconds
+* Standard C (fgets + strcat + strlen): 1.506s
+* FastSafeStrings (length-aware + VB):   0.205s
 
-👉 **~7× faster**
+👉 **~7× faster in this workload by eliminating repeated scans**
 
-Benchmarks compare typical C usage (strcpy/strcat/strlen), not manually optimised memcpy-based code.
+Benchmarks compare typical idiomatic C usage, not hand-optimised memcpy-based code.
 
-### **Micro benchmarks**
+---
 
-Operation       C        FastSafeStrings  
----------------------------------------  
-strlen          0.176    0.007    (~25× faster)  
-strcpy          0.137    0.044    (~3× faster)  
-strcat          0.216    0.043    (~5× faster)  
-strcmp          0.049    0.049    (same)  
-literal copy    0.040    0.041    (same)
+### Microbenchmarks (GCC -O3, x86_64)
 
-## **🔍 Why this is faster **
+| Operation    | C     | FastSafeStrings | Speedup |
+| ------------ | ----- | --------------- | ------- |
+| strlen       | 0.176 | 0.007           | ~25×    |
+| strcpy       | 0.137 | 0.044           | ~3×     |
+| strcat       | 0.216 | 0.043           | ~5×     |
+| strcmp       | 0.049 | 0.049           | same    |
+| literal copy | 0.040 | 0.041           | same    |
 
-The improvement comes from eliminating repeated work:
+---
 
-### **Standard C**
+## 🔍 Why this is faster
 
+Traditional C string handling repeatedly scans memory:
+
+```
 read → scan → scan → scan
+```
 
-### **FastSafeStrings + VB**
+FastSafeStrings avoids this:
 
+```
 read → process (no scans)
+```
 
-## **🚀 Key Features**
+Key idea:
+👉 **eliminate unnecessary passes over the same data**
 
-* **Memory safe by design**  
-  All operations enforce bounds (len ≤ max_len)  
-* **O(1) string length**  
-  No strlen scans  
-* **Fast append (CAT)**  
-  No destination scanning (strcat replacement)  
-* **Zero-copy substring views**  
-  Efficient slicing without allocation  
-* **Variable-blocked file support (VB/VBF)**  
-  Length-prefixed records eliminate input scanning  
-* **Incremental adoption**  
-  Works alongside existing C code
+---
 
-## **📌 Example**
+## 🛡️ Safety
 
-#include "faststr.h"
+FastSafeStrings enforces:
 
-DCL(name,40);  
-DCL(msg,80);
+* All operations are bounds-checked (length ≤ capacity)
+* Strings always track their current length
+* Writes are safely truncated if needed (no buffer overflow)
 
-SET(name,"Clement");  
-SET(msg,"Hello ");
+---
 
-CAT(msg,name);
+## 🚀 Key Features
 
-printf("%s\n", msg);
+* Descriptor-based strings (stored length + capacity)
+* O(1) length access (no `strlen`)
+* Fast append (no destination scanning)
+* Zero-copy substring views
+* Incremental adoption alongside existing C code
 
-## **🧠 Design Overview**
+---
 
-FastSafeStrings uses a **descriptor (dope vector)**:
+## ❓ Why not std::string / Rust / other libraries?
 
-typedef struct {  
-    uint32_t cur_len;  
-    uint32_t max_len;  
-} vb_meta_t;
+FastSafeStrings is designed for:
 
-Each string has:
+* Existing C codebases where changing language is not practical
+* Low-level or embedded environments
+* Workloads where repeated string scanning is a bottleneck
 
-* data buffer  
-* stored length  
-* known capacity
+It focuses on improving C, not replacing it.
 
-## **📂 Variable Blocked Files (VB)**
+---
 
-The included VB file system stores records as:
+## 📂 Variable Blocked (VB) Files
 
- [length][data]  
- [length][data]  
-...
+FastSafeStrings includes support for variable-length records:
 
-Optionally grouped into blocks for efficiency.
+```
+[length][data]
+[length][data]
+```
 
-From the implementation:
+This allows:
 
-* length prefix (16-bit or 32-bit)  
-* optional block buffering  
-* portable C stdio backend
+* Reading records without delimiter scanning
+* Efficient processing of structured text data
 
-### **Why VB matters**
+### Why this matters
 
 Standard C text processing:
 
+```
 fgets → scan for newline  
 strlen → scan again  
-strcat → scan destination
+strcat → scan destination  
+```
 
-👉 Multiple passes over the same data
+FastSafeStrings + VB:
 
-### **VB + FastSafeStrings**
-
+```
 read length → copy → append
+```
 
-👉 **No scanning anywhere**
+👉 No scanning anywhere
 
-## **💡 Key Insight**
+---
 
-FastSafeStrings does not try to replace libc.
+## 🔧 API Overview
 
-Instead, it improves performance by:
+### Strings
 
-**eliminating unnecessary scans**
-
-* no repeated strlen  
-* no strcat destination scan  
-* no delimiter search in input
-
-## **🛡️ Safety**
-
-FastSafeStrings guarantees:
-
-* no buffer overruns  
-* safe truncation  
-* predictable behaviour
-
-Traditional C string handling can overflow buffers if not carefully managed.
-
-## **🔧 API Overview**
-
-### **Strings**
-
+```
 DCL(name,size)  
 SET(dst,"text")  
 CPY(dst,src)  
@@ -206,45 +182,51 @@ CAT(dst,src)
 CMP(a,b)  
 LEN(x)  
 SUBSTR(dst,src,...)
+```
 
-### **VB File API**
+### VB File API
 
+```
 vb_handle_t *VB_OpenRead(path);  
 VB_Get(handle, buf, max_len, &len);  
 VB_Put(handle, data, len);  
 VB_Close(handle);
+```
 
-## **📈 When to Use**
+---
+
+## 📈 When to Use
 
 FastSafeStrings is useful when:
 
-* processing large volumes of text or records  
-* performance matters  
-* safety is important  
-* rewriting in another language is not practical
+* Processing large volumes of text or records
+* Performance matters
+* Safety is important
+* Rewriting in another language is not practical
 
-## **⚠️ Limitations**
+---
 
-* Requires DCL for managed strings  
-* Raw char * remains unsafe outside the API  
-* VB format requires preprocessing or conversion of text data
- 
-## ?? Documentation
+## ⚠️ Limitations
 
-- [How to use FastSafeStrings](HOWTO.md)
+* Requires `DCL` for managed strings
+* Raw `char *` remains unsafe outside the API
+* VB format requires preprocessing or conversion
 
-## **📜 License**
+---
+
+## 📜 License
 
 MIT License
 
-## **🧾 Summary**
+---
+
+## 🧾 Summary
 
 FastSafeStrings combines:
 
-* **descriptor-based strings**  
-* **length-aware record I/O**
+* descriptor-based strings
+* length-aware processing
 
 to eliminate repeated scanning in C programs.
 
-**Fewer passes over data → faster execution and safer code**
-
+👉 **Fewer passes over data = faster and safer code**
