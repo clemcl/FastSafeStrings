@@ -2,6 +2,7 @@
 
 **Fast, safe string handling for C and C++ — without repeated scanning.**
 
+
 FastSafeStrings improves performance by eliminating repeated string scans
 (`strlen`, `strcat`, delimiter searches) using length-aware strings.
 
