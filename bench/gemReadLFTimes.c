@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdint.h>
 
 #define MAX_REC 512
 
@@ -17,6 +18,8 @@ int main() {
     char buffer[MAX_REC];
     char work_area[MAX_REC + 64];
     
+    uint64_t records_processed = 0;      
+    
     clock_t start = clock();
     
     // fgets must scan every byte for \n or \r\n
@@ -32,11 +35,13 @@ int main() {
         strcpy(work_area, "PROC:");
         strcat(work_area, buffer); 
         sink += buffer[0];     
+        records_processed++;     
     }
     
     clock_t end = clock();
     double cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
     
+    printf("EOF Reached. Processed %llu records.\n", records_processed);
     printf("Standard C (fgets/strcat) Time: %f seconds\n", cpu_time_used);
            
     fclose(fp);

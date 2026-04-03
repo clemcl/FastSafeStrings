@@ -1,6 +1,8 @@
 #ifndef VB_HANDLE_H
 #define VB_HANDLE_H
  
+#define _CRT_SECURE_NO_WARNINGS 
+ 
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -17,6 +19,12 @@ typedef enum {
     VB_MODE_WRITE = 2
 } vb_mode_t;
 
+typedef struct
+{
+    const char *data;
+    uint32_t len;
+} vb_view_t;
+ 
 typedef enum {
     VB_LEN16 = 2,   /* classic VB */
     VB_LEN32 = 4    /* VB4 */
@@ -83,6 +91,14 @@ int VB_Get(
     void        *buf,
     uint32_t     max_len,
     uint32_t    *out_len
+);
+
+
+/* QSAM-style Locate: Returns the address and length of the record in the buffer */
+int VB_GetLocate(
+    vb_handle_t *vb,
+    const char  **ptr,
+    uint32_t    *len
 );
 
 int VB_Close(vb_handle_t *vb);

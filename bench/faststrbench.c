@@ -20,6 +20,25 @@ int main(void)
 {
     printf("FastSafeStrings Benchmark\n\n");
 
+#if defined(__64BIT__) || defined(__x86_64__) || defined(__ppc64__) || defined(_M_X64)
+    #define IS_64BIT 1
+#else
+    #define IS_64BIT 0
+#endif
+
+/* Compiler Identification */
+#if defined(__clang__)
+    #define COMPILER "Clang"
+#elif defined(__GNUC__)
+    #define COMPILER "GCC"
+#elif defined(__IBMC__) || defined(__xlC__)
+    #define COMPILER "IBM xlc"
+#elif defined(_MSC_VER)
+    #define COMPILER "MSVC"
+#else
+    #define COMPILER "Unknown"
+#endif
+ 
 #if defined(__GNUC__) && !defined(__clang__)
     printf("Compiled with GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 
