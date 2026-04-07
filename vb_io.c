@@ -262,6 +262,7 @@ vb_handle_t *VB_OpenRead(const char *path)
 
     /* Read the global file header */
     if (fread(&hdr, sizeof hdr, 1, vb->fp) != 1) {
+        fprintf(stderr, "Error: Could not read file header.\n");
         fclose(vb->fp);
         free(vb);
         return NULL;
@@ -313,7 +314,14 @@ vb_handle_t *VB_OpenReadx(const char *path)
     vb->lenfmt = (vb_lenfmt_t)hdr.lenfmt;
     vb->block_size = hdr.block_size;
 
-    fread(&vb->block_used, 4, 1, vb->fp);   /* Input Blocksize */
+    if (fread(&vb->block_used, 4, 1, vb->fp) != 1) {
+       fprintf(stderr, "Error: Could not read initial block size.\n");
+       fclose(vb->fp);
+       free(vb->block_buf);
+       free(vb);
+       return NULL;
+    }
+
 
     if (vb->block_size) {
         vb->block_buf = ( uint8_t * ) malloc(vb->block_size);
@@ -323,4 +331,3 @@ vb_handle_t *VB_OpenReadx(const char *path)
 
     return vb;
 }
-/* Rest of file (Open/Close/Skip) stays the same... */

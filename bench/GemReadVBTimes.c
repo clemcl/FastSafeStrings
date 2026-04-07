@@ -12,8 +12,8 @@ int main() {
        return 1;
     }
 
-    DCL(rec_buf, 512);
-    DCL(work_area, 1024);
+    DCL(rec_buf, 100);
+    DCL(work_area, 200);
     uint32_t bytes_read;
 
     uint64_t records_processed = 0;      

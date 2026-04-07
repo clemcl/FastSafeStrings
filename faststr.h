@@ -62,15 +62,36 @@ typedef struct {
     __builtin_memcpy((void*)(target), (const void*)(src), _m);  \
 }
 
+#define FSS_MOVE_FAST(dest, src, len) do { \
+    size_t _l = (len); \
+    char *_d = (char*)(dest); \
+    const char *_s = (const char*)(src); \
+    if (_l >= 64) { \
+        /* Your 8-byte unrolled logic here for big blocks */ \
+        while (_l >= 8) { \
+            *(uint64_t*)_d = *(uint64_t*)_s; \
+            _d += 8; _s += 8; _l -= 8; \
+        } \
+    } \
+    /* Finish the remaining 0-7 bytes */ \
+    while (_l--) *_d++ = *_s++; \
+} while(0)
+ 
 /* -------------------------------------------------- */
 /* Declaration & Length                               */
 /* -------------------------------------------------- */
 
-#define DCL(name,size) \
+#define DCLold(name,size) \
     char name[(size)+1] = {0}; \
     vb_meta_t dv_##name = {0,(size)}; \
     fss_string fs_##name = { name,&dv_##name }
 
+#define DCL(name, size) \
+    char name[(size) + 1] = {0}; \
+    enum { name##_maxlen = (size) }; \
+    vb_meta_t dv_##name = {0, (size)}; \
+    fss_string fs_##name = { name, &dv_##name }
+     
 #define LEN(x) (dv_##x.cur_len)
 #define MAX(x) (dv_##x.max_len)
 
@@ -86,8 +107,25 @@ typedef struct {
     FASTSTR_TERM(dst, dv_##dst.cur_len); \
 } while(0)
 
-/* CPY: String to String copy */
 #define CPY(dst, src) do { \
+    uint32_t _slen = dv_##src.cur_len; \
+    /* Optimization: If maxlen <= 256, compiler drops a single MVC/VMOV */ \
+    if (__builtin_constant_p(_slen) || dst##_maxlen <= 256) { \
+        uint32_t _m = (_slen > (uint32_t)dst##_maxlen) ? \
+                      (uint32_t)dst##_maxlen : _slen; \
+        __builtin_memcpy((void*)(dst), (const void*)(src), _m); \
+        dv_##dst.cur_len = _m; \
+    } else { \
+        /* Fallback for very large buffers */ \
+        FSS_MOVE_LEAN(dst, dv_##dst.max_len, src, _slen); \
+        dv_##dst.cur_len = (_slen > dv_##dst.max_len) ? \
+                           dv_##dst.max_len : _slen; \
+    } \
+    FASTSTR_TERM(dst, dv_##dst.cur_len); \
+} while(0)
+ 
+/* CPY: String to String copy */
+#define CPYold(dst, src) do { \
     FSS_MOVE_LEAN(dst, dv_##dst.max_len, src, dv_##src.cur_len); \
     dv_##dst.cur_len = (dv_##src.cur_len > dv_##dst.max_len) ? dv_##dst.max_len : dv_##src.cur_len; \
     FASTSTR_TERM(dst, dv_##dst.cur_len); \
