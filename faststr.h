@@ -20,10 +20,34 @@
        optional small-copy optimisation
 */
 
+/* * Copyright (c) 1988-2026 Clement Victor Clarke (Originator of Jol)
+ * Project: FastSafeStrings & vbio 
+ * * LICENSE TERMS:
+ * 1. INDIVIDUAL/NON-PROFIT: Use is free under the MIT License.
+ * 2. COMMERCIAL: Use by entities with annual revenue > $1M AUD requires
+ * a paid Commercial License.
+ *
+ * MISSION: To reduce global energy consumption through computational efficiency.
+ * CONTACT: [clemclarke@gmail.com] for commercial terms and "Shared Savings" agreements.
+ */
+ 
 /* -------------------------------------------------- */
 /* Terminator & Metadata                              */
 /* -------------------------------------------------- */
 
+#ifdef __BORLANDC__
+  #pragma option -4
+//  #pragma intrinsic memcpy
+//  #pragma inline
+  #define __builtin_memcpy   memcpy
+  #define __builtin_constant_p 
+//  #pragma intrinsic -a
+#elif defined(__xlC__)
+  /* XLC handles inlining via JCL optimization parameters */
+  #define __builtin_memcpy   memcpy
+#endif
+
+ 
 #ifndef FASTSTR_KEEP_TERMINATOR
 #define FASTSTR_TERM(dst,len) ((void)0)
 #else
@@ -66,6 +90,20 @@ typedef struct {
     size_t _l = (len); \
     char *_d = (char*)(dest); \
     const char *_s = (const char*)(src); \
+    /* Guard: Only use 8-byte move if pointers are aligned */ \
+    if (_l >= 64 && (((uintptr_t)_d | (uintptr_t)_s) & 7) == 0) { \
+        while (_l >= 8) { \
+            *(uint64_t*)_d = *(uint64_t*)_s; \
+            _d += 8; _s += 8; _l -= 8; \
+        } \
+    } \
+    while (_l--) *_d++ = *_s++; \
+} while(0)
+ 
+#define FSS_MOVE_FASTold(dest, src, len) do { \
+    size_t _l = (len); \
+    char *_d = (char*)(dest); \
+    const char *_s = (const char*)(src); \
     if (_l >= 64) { \
         /* Your 8-byte unrolled logic here for big blocks */ \
         while (_l >= 8) { \
@@ -99,15 +137,27 @@ typedef struct {
 /* Optimized Public Macros (Defaulting to LEAN)       */
 /* -------------------------------------------------- */
 
-/* SET: Literal assignment */
+/* Added to SET macro */
 #define SET(dst, lit) do { \
+    uint32_t _llen = (uint32_t)(sizeof(lit)-1); \
+    if (_llen > dv_##dst.max_len) { \
+        fprintf(stderr, "FSS WARNING: SET truncation on %s (%u > %u)\n", #dst, _llen, dv_##dst.max_len); \
+        /* Optional: MVS_ABEND("S013", "Data Truncation"); */ \
+    } \
+    FSS_MOVE_LEAN(dst, dv_##dst.max_len, lit, _llen); \
+    dv_##dst.cur_len = (_llen > dv_##dst.max_len) ? dv_##dst.max_len : _llen; \
+    FASTSTR_TERM(dst, dv_##dst.cur_len); \
+} while(0)
+ 
+/* SET: Literal assignment */
+#define SETold(dst, lit) do { \
     uint32_t _llen = (uint32_t)(sizeof(lit)-1); \
     FSS_MOVE_LEAN(dst, dv_##dst.max_len, lit, _llen); \
     dv_##dst.cur_len = (_llen > dv_##dst.max_len) ? dv_##dst.max_len : _llen; \
     FASTSTR_TERM(dst, dv_##dst.cur_len); \
 } while(0)
 
-#define CPY(dst, src) do { \
+#define CPYnew(dst, src) do { \
     uint32_t _slen = dv_##src.cur_len; \
     /* Optimization: If maxlen <= 256, compiler drops a single MVC/VMOV */ \
     if (__builtin_constant_p(_slen) || dst##_maxlen <= 256) { \
@@ -125,7 +175,7 @@ typedef struct {
 } while(0)
  
 /* CPY: String to String copy */
-#define CPYold(dst, src) do { \
+#define CPY(dst, src) do { \
     FSS_MOVE_LEAN(dst, dv_##dst.max_len, src, dv_##src.cur_len); \
     dv_##dst.cur_len = (dv_##src.cur_len > dv_##dst.max_len) ? dv_##dst.max_len : dv_##src.cur_len; \
     FASTSTR_TERM(dst, dv_##dst.cur_len); \

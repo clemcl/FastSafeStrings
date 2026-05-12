@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#include "vb_file.h"
+#include "vbx_file.h"
 #include "faststr.h"
 
 
-void print_build_identity() {
+void print_build_identityx() {
     printf("--- Build Identity ---\n");
     printf("File: %s\n", __FILE__);
     
@@ -23,7 +23,7 @@ void print_build_identity() {
     
     printf("----------------------\n\n");
 }
- 
+/* 
 // Portable memmem implementation if your compiler doesn't have it
 void *my_memmem(const void *l, size_t l_len, const void *s, size_t s_len) {
     if (s_len == 0) return (void *)l;
@@ -33,20 +33,20 @@ void *my_memmem(const void *l, size_t l_len, const void *s, size_t s_len) {
     }
     return NULL;
 }
-
+*/
 int main() {
-    vb_handle_t *in = VB_OpenRead("race_test.vbf");
-    vb_handle_t *out = VB_OpenWrite("race_test_fss_out.vbf", 32768, VB_LEN16); 
+    vb_handle_t *in = VB_OpenRead("race_test.vbf","");
+    vb_handle_t *out = VB_OpenWrite("race_test_fss_out.vbf", 32768, ""); 
     if (!in || !out) return 1;
 
     DCL(rec_buf, 512);
     DCL(work_area, 600);
     uint32_t bytes_read;
-    uint64_t records_processed = 0;      
+    uint32_t records_processed = 0;      
      
-    uint64_t match_count = 0;
+    uint32_t match_count = 0;
      
-    print_build_identity();
+    print_build_identityx();
     clock_t start = clock();
      
     while (VB_Get(in, rec_buf, 512, &bytes_read) > 0) {
@@ -75,7 +75,7 @@ int main() {
 
     clock_t end = clock();
     VB_Close(in); VB_Close(out);
-    printf("Total Matches Found: %llu\n", match_count);
+    printf("Total Matches Found: %lu\n", match_count);
     printf("Challenger Time: %f seconds\n", (double)(end-start)/CLOCKS_PER_SEC);
     return 0;
 }

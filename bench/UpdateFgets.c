@@ -15,6 +15,8 @@ void print_build_identity() {
         printf("Compiler: Clang %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
     #elif defined(__GNUC__) || defined(__GNUG__)
         printf("Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+    #elif defined(__BORLANDC__)
+        printf("Compiler: Borland %0X)\n", __BORLANDC__);
     #elif defined(_MSC_VER)
         printf("Compiler: Microsoft Visual C++ (Internal Version %d)\n", _MSC_VER);
     #elif defined(__xlC__)
@@ -26,9 +28,15 @@ void print_build_identity() {
     printf("----------------------\n\n");
 }
 
+// typedef unsigned __int64 uint64_t;
+ 
 int main() {
-    FILE *fp = fopen("race_test.txt", "r");
+
+    print_build_identity();
+
+    FILE *fp = fopen("race_test38.txt", "r");
     FILE *out = fopen("race_test_std_out.txt", "w");
+     
     if (!fp || !out) {
         printf("Error: Could not open files.\n");
         return 1;
@@ -39,8 +47,6 @@ int main() {
     const char *search_for = "_Item_"; // Pattern to find
     const char *replace_with = "_DATA_"; // Pattern to write
     uint64_t records_processed = 0;      
-     
-    print_build_identity();
      
     uint64_t match_count = 0; 
     clock_t start = clock();

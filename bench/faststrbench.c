@@ -7,6 +7,8 @@
 #include <time.h>
 #include "faststr.h"
 
+#define CPY_CSTR SET
+#define FSS_DEBUG dumpvar
 #define ITER 20000000
 
 volatile unsigned long bench_sink = 0;
@@ -46,10 +48,17 @@ int main(void)
 #elif defined(__clang__)
     printf("Compiled with Clang %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
 
+#elif defined(__BORLANDC__)
+    printf("Compiler: Borland %0X)\n", __BORLANDC__);
+
     // Detect Microsoft Visual C++
 #elif defined(_MSC_VER)
     printf("Compiled with MSVC (Visual C++) version %d\n", _MSC_VER);
 
+    // Detect IBM C z/OS
+#elif defined(__IBMC__) || defined(__xlC__)
+    printf("Compiled with IBM XLC %d\n", __IBM__);
+     
     // Unknown compiler
 #else
     printf("Unknown compiler\n");
@@ -64,11 +73,9 @@ int main(void)
     char cstr[40] = "ClementClarke";
 
     DCL(fstr,40);
-    SET(fstr,"ClementClarke");
-    dumpvar(fstr);
+    CPY_CSTR(fstr,"ClementClarke");  // was SET
+    FSS_DEBUG(fstr);
 
-  /*  char a[40];
-    char b[40] = "ABCDEFGHIJK";     */
 
     char a[90] = "";
     char b[90] = "ABCDEFGHIJK";
@@ -113,32 +120,27 @@ int main(void)
     DCL(fa,40);
     DCL(fb,40);
 
-    SET(fa,"ABCDEFxHIJKLMNOP");
-    SET(fb,"ABCDEFGHIJK");
+    CPY_CSTR(fa,"ABCDEFxHIJKLMNOP");  // was SET
+    CPY_CSTR(fb,"ABCDEFGHIJK");
 
-    printf("Address of a: %p\n", (void *)&a);
-    printf("Address of b: %p\n", (void *)&b);
+ //   printf("Address of a: %p\n", (void *)&a);
+ //   printf("Address of b: %p\n", (void *)&b);
     memset(b,'b',7);
-    printf("b=: %s\n",b);
+ //   printf("b=: %s\n",b);
     memset(a,'l',7);
     a[8] = 0;   
     b[8] = 0;   
-    printf("a=: %s\n",a);
+  //  printf("a=: %s\n",a);
     a[8] = 0;   
     b[8] = 0;   
-    printf("a=: %s\n",a);
-    printf("b=: %s\n",b);
-    dumpvar(fa);
-    dumpvar(fb);
+ //   printf("a=: %s\n",a);
+ //   printf("b=: %s\n",b);
+    FSS_DEBUG(fa);
+    FSS_DEBUG(fb);
   
     strcpy(a,fa);
     strcpy(b,fb);
-    printf("a=: %s\n",a);
-    printf("b=: %s\n",b);
-    printf("fa=: %s\n",fa);
-    printf("fb=: %s\n",fb);
   
-     
     start = clock();
 
     for(int i=0;i<ITER;i++)
@@ -219,7 +221,7 @@ int main(void)
 
     for(int i=0;i<ITER;i++)
     {
-         CMP(fa,fb);
+ //borl        CMP(fa,fb);
          bench_sink +=1; 
     }
 
@@ -250,7 +252,7 @@ int main(void)
 
     for(int i=0;i<ITER;i++)
     {
-         SET(fa,"ABCDEF");
+         CPY_CSTR(fa,"ABCDEF");        // was set
          cstr[0] = (char)(i & 7) + 'A';
          bench_sink += 1; 
     }
