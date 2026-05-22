@@ -1,9 +1,10 @@
-#ifndef FASTSTR_H
-#define FASTSTR_H
+#ifndef FASTSTR_BEST_H
+#define FASTSTR_BEST_H
 
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+
 
 /*
    FastSafeStrings
@@ -20,34 +21,34 @@
        optional small-copy optimisation
 */
 
-/* * Copyright (c) 1988-2026 Clement Victor Clarke (Originator of Jol)
- * Project: FastSafeStrings & vbio 
- * * LICENSE TERMS:
- * 1. INDIVIDUAL/NON-PROFIT: Use is free under the MIT License.
- * 2. COMMERCIAL: Use by entities with annual revenue > $1M AUD requires
- * a paid Commercial License.
- *
- * MISSION: To reduce global energy consumption through computational efficiency.
- * CONTACT: [clemclarke@gmail.com] for commercial terms and "Shared Savings" agreements.
- */
- 
-/* -------------------------------------------------- */
-/* Terminator & Metadata                              */
-/* -------------------------------------------------- */
+// Any __builtin_ function used here will optimize to raw assembly instructions
 
-#ifdef __BORLANDC__
-  #pragma option -4
-//  #pragma intrinsic memcpy
+#if defined(__clang__)
+  /* clang doesn't support builtin either */
+//  #define __builtin_memcpy   memcpy
+  #pragma inline
+#elif __BORLANDC__
+//  #pragma option -6
 //  #pragma inline
+  #pragma intrinsic memcpy
   #define __builtin_memcpy   memcpy
-  #define __builtin_constant_p 
-//  #pragma intrinsic -a
-#elif defined(__xlC__)
+//  #define __builtin_constant_p 
+#elif defined(__GNUC__)
+ #pragma GCC optimize ("O2")
+#elif defined(__xclang__)
+  #define __builtin_memcmp   memcmp
+#elif defined(__IBMC__) || defined(__xlC__)
   /* XLC handles inlining via JCL optimization parameters */
   #define __builtin_memcpy   memcpy
 #endif
 
+//  #define __builtinmemcpy   memcpy
  
+/* -------------------------------------------------- */
+/* 1. Metadata & Structures                           */
+/* -------------------------------------------------- */
+
+// Configurable null-termination (from faststr.h)
 #ifndef FASTSTR_KEEP_TERMINATOR
 #define FASTSTR_TERM(dst,len) ((void)0)
 #else
@@ -57,40 +58,35 @@
 typedef struct {
     uint32_t cur_len;
     uint32_t max_len;
-} vb_meta_t;
+} vb_meta_t; //
 
 typedef struct {
     char *data;
     vb_meta_t *meta;
-} fss_string;
+} fss_string; //
 
 /* -------------------------------------------------- */
-/* The "Magic" Move Macros                            */
+/* 2. Tiered Memory Movement                          */
 /* -------------------------------------------------- */
-
-/* FSS_MOVE_PAD: Mainframe MVC style (Space Padded) */
-#define FSS_MOVE_PAD(target, target_cap, src, src_len) {        \
-    size_t _m = ((size_t)(src_len) > (size_t)(target_cap)) ?    \
-                (size_t)(target_cap) : (size_t)(src_len);       \
-    __builtin_memcpy((void*)(target), (const void*)(src), _m);  \
-    if (_m < (size_t)(target_cap)) {                            \
-        __builtin_memset((void*)((char*)(target) + _m), ' ',    \
-                         (size_t)(target_cap) - _m);            \
-    }                                                           \
-}
-
-/* FSS_MOVE_LEAN: Variable Length style (No Padding) */
-#define FSS_MOVE_LEAN(target, target_cap, src, src_len) {       \
-    size_t _m = ((size_t)(src_len) > (size_t)(target_cap)) ?    \
-                (size_t)(target_cap) : (size_t)(src_len);       \
-    __builtin_memcpy((void*)(target), (const void*)(src), _m);  \
-}
 
 #define FSS_MOVE_FAST(dest, src, len) do { \
     size_t _l = (len); \
     char *_d = (char*)(dest); \
     const char *_s = (const char*)(src); \
-    /* Guard: Only use 8-byte move if pointers are aligned */ \
+    /* Just do it. Modern CPUs handle the alignment internally. */ \
+    while (_l >= 8) { \
+        *(uint64_t*)_d = *(uint64_t*)_s; \
+        _d += 8; _s += 8; _l -= 8; \
+    } \
+    while (_l--) *_d++ = *_s++; \
+} while(0)
+ 
+// 8-byte Unrolled Move for large blocks (from faststr.h)
+// awful code. degrades to single byte copy if not on 8-byte boundary!
+#define FSS_MOVE_FASTcvc(dest, src, len) do { \
+    size_t _l = (len); \
+    char *_d = (char*)(dest); \
+    const char *_s = (const char*)(src); \
     if (_l >= 64 && (((uintptr_t)_d | (uintptr_t)_s) & 7) == 0) { \
         while (_l >= 8) { \
             *(uint64_t*)_d = *(uint64_t*)_s; \
@@ -99,154 +95,135 @@ typedef struct {
     } \
     while (_l--) *_d++ = *_s++; \
 } while(0)
- 
-#define FSS_MOVE_FASTold(dest, src, len) do { \
-    size_t _l = (len); \
-    char *_d = (char*)(dest); \
-    const char *_s = (const char*)(src); \
-    if (_l >= 64) { \
-        /* Your 8-byte unrolled logic here for big blocks */ \
-        while (_l >= 8) { \
-            *(uint64_t*)_d = *(uint64_t*)_s; \
-            _d += 8; _s += 8; _l -= 8; \
-        } \
-    } \
-    /* Finish the remaining 0-7 bytes */ \
-    while (_l--) *_d++ = *_s++; \
+
+
+/* -------------------------------------------------- */
+/* 2. Tiered Memory Movement (Fixed for GCC)          */
+/* -------------------------------------------------- */
+
+#define FSS_COPY_BEST(dst, src, len) do { \
+        __builtin_memcpy(dst, src, len); \
 } while(0)
  
 /* -------------------------------------------------- */
-/* Declaration & Length                               */
+/* 3. Core API (DCL, SET, CPY, CAT)                   */
 /* -------------------------------------------------- */
 
-#define DCLold(name,size) \
-    char name[(size)+1] = {0}; \
-    vb_meta_t dv_##name = {0,(size)}; \
-    fss_string fs_##name = { name,&dv_##name }
+#define LEN(name) (dv_##name.cur_len)    
+ 
+// 1. Define a separate macro for the alignment attribute based on the compiler
+#if defined(__clang__) || defined(__GNUC__)
+    #define ALIGN_16 __attribute__((aligned(16)))
+#else
+    #define ALIGN_16 
+#endif
 
+// 2. Use that cleanly inside your main macro definition
 #define DCL(name, size) \
-    char name[(size) + 1] = {0}; \
-    enum { name##_maxlen = (size) }; \
+    ALIGN_16 char name[(size) + 1] = {0}; \
     vb_meta_t dv_##name = {0, (size)}; \
     fss_string fs_##name = { name, &dv_##name }
-     
-#define LEN(x) (dv_##x.cur_len)
-#define MAX(x) (dv_##x.max_len)
+ 
+#define DCLx(name, size) \
+    char name[(size) + 1] = {0}; \
+    vb_meta_t dv_##name = {0, (size)}; \
+    fss_string fs_##name = { name, &dv_##name } 
 
-/* -------------------------------------------------- */
-/* Optimized Public Macros (Defaulting to LEAN)       */
-/* -------------------------------------------------- */
-
-/* Added to SET macro */
 #define SET(dst, lit) do { \
     uint32_t _llen = (uint32_t)(sizeof(lit)-1); \
-    if (_llen > dv_##dst.max_len) { \
-        fprintf(stderr, "FSS WARNING: SET truncation on %s (%u > %u)\n", #dst, _llen, dv_##dst.max_len); \
-        /* Optional: MVS_ABEND("S013", "Data Truncation"); */ \
-    } \
-    FSS_MOVE_LEAN(dst, dv_##dst.max_len, lit, _llen); \
-    dv_##dst.cur_len = (_llen > dv_##dst.max_len) ? dv_##dst.max_len : _llen; \
-    FASTSTR_TERM(dst, dv_##dst.cur_len); \
+    uint32_t _m = (_llen > dv_##dst.max_len) ? dv_##dst.max_len : _llen; \
+    __builtin_memcpy(dst, lit, _m); \
+    dv_##dst.cur_len = _m; \
+    FASTSTR_TERM(dst, _m); \
 } while(0)
  
-/* SET: Literal assignment */
-#define SETold(dst, lit) do { \
-    uint32_t _llen = (uint32_t)(sizeof(lit)-1); \
-    FSS_MOVE_LEAN(dst, dv_##dst.max_len, lit, _llen); \
-    dv_##dst.cur_len = (_llen > dv_##dst.max_len) ? dv_##dst.max_len : _llen; \
-    FASTSTR_TERM(dst, dv_##dst.cur_len); \
-} while(0)
 
-#define CPYnew(dst, src) do { \
-    uint32_t _slen = dv_##src.cur_len; \
-    /* Optimization: If maxlen <= 256, compiler drops a single MVC/VMOV */ \
-    if (__builtin_constant_p(_slen) || dst##_maxlen <= 256) { \
-        uint32_t _m = (_slen > (uint32_t)dst##_maxlen) ? \
-                      (uint32_t)dst##_maxlen : _slen; \
-        __builtin_memcpy((void*)(dst), (const void*)(src), _m); \
-        dv_##dst.cur_len = _m; \
-    } else { \
-        /* Fallback for very large buffers */ \
-        FSS_MOVE_LEAN(dst, dv_##dst.max_len, src, _slen); \
-        dv_##dst.cur_len = (_slen > dv_##dst.max_len) ? \
-                           dv_##dst.max_len : _slen; \
-    } \
-    FASTSTR_TERM(dst, dv_##dst.cur_len); \
-} while(0)
- 
-/* CPY: String to String copy */
 #define CPY(dst, src) do { \
-    FSS_MOVE_LEAN(dst, dv_##dst.max_len, src, dv_##src.cur_len); \
-    dv_##dst.cur_len = (dv_##src.cur_len > dv_##dst.max_len) ? dv_##dst.max_len : dv_##src.cur_len; \
-    FASTSTR_TERM(dst, dv_##dst.cur_len); \
-} while(0)
+    uint32_t _m = (dv_##src.cur_len > dv_##dst.max_len) ? dv_##dst.max_len : dv_##src.cur_len; \
+    __builtin_memcpy(dst, src, _m ); \
+    dv_##dst.cur_len = _m; \
+    FASTSTR_TERM(dst, _m); \
+} while(0) //
 
-/* SUBSTR: Extraction */
-#define SUBSTR(dst, src, start, length) do { \
-    uint32_t _s = (start); \
-    uint32_t _l = (length); \
-    if (_s < dv_##src.cur_len) { \
-        uint32_t _avail = dv_##src.cur_len - _s; \
-        uint32_t _to_mov = (_l > _avail) ? _avail : _l; \
-        FSS_MOVE_LEAN(dst, dv_##dst.max_len, (src + _s), _to_mov); \
-        dv_##dst.cur_len =                              \
-        (_to_mov > dv_##dst.max_len) ? dv_##dst.max_len : _to_mov; \
-    } else { \
-        dv_##dst.cur_len = 0; \
-    } \
-    FASTSTR_TERM(dst, dv_##dst.cur_len); \
-} while(0)
-
-/* CAT: Append (Built-in memcpy) */
+ 
+ 
 #define CAT(dst, src) do { \
     uint32_t _dlen = dv_##dst.cur_len; \
-    uint32_t _slen = dv_##src.cur_len; \
-    uint32_t _space = dv_##dst.max_len - _dlen; \
-    uint32_t _mov = (_slen > _space) ? _space : _slen; \
-    __builtin_memcpy((void*)(dst + _dlen), (void*)src, _mov); \
-    dv_##dst.cur_len = _dlen + _mov; \
-    FASTSTR_TERM(dst, dv_##dst.cur_len); \
-} while(0)
-
-
-/* -------------------------------------------------- */
-/* High-Speed I/O Macros                              */
-/* -------------------------------------------------- */
-
-/* Reads a record directly into a DCL'd buffer
-   and updates its Dope Vector.*/
-/*  GET_REC(handle, dcl_name, status_var) */
-
-#define GET_REC(h, name, stat)  \
-    VB_Get(h, name, sizeof(name), &stat)
-
-#define PUT_REC(h, name) \
-    VB_Put((h), (name), dv_##name.cur_len)
-
-#define FIND_REC(h, skip_count, stat) do { \
-    uint32_t _i; (stat) = 1; \
-    for (_i = 0; _i < (skip_count); _i++) { \
-        if (VB_Skip((h), NULL) <= 0) { (stat) = 0; break; } \
+    uint32_t _space = (dv_##dst.max_len > _dlen) ? (dv_##dst.max_len - _dlen) : 0; \
+    uint32_t _m = (dv_##src.cur_len > _space) ? _space : dv_##src.cur_len; \
+    if (_m > 0) { \
+        __builtin_memcpy((dst + _dlen), src, _m); \
+        dv_##dst.cur_len = _dlen + _m; \
+        FASTSTR_TERM(dst, dv_##dst.cur_len); \
     } \
+} while(0) //
+
+/* -------------------------------------------------- */
+/* 4. Advanced Features (VIEW, Substr, C-Strings)     */
+/* -------------------------------------------------- */
+
+// Zero-copy substring (from faststrnew.h)
+#define VIEW(name, src, start, len) \
+    char *name = (src) + ((start) > dv_##src.cur_len ? dv_##src.cur_len : (start)); \
+    vb_meta_t dv_##name = { \
+        ((len) < (dv_##src.cur_len - ((start) > dv_##src.cur_len ? dv_##src.cur_len : (start)))) ? \
+        (len) : (dv_##src.cur_len - ((start) > dv_##src.cur_len ? dv_##src.cur_len : (start))), \
+        dv_##name.cur_len \
+    }
+
+// C-String Interoperability (from faststrnew.h)
+#define CPY_CSTR(dst, cstr) do { \
+    const char *_scstr = (cstr); \
+    uint32_t _lencstr = (uint32_t)strlen(_scstr); \
+    uint32_t _mcstr = (_lencstr < dv_##dst.max_len) ? _lencstr : dv_##dst.max_len; \
+    __builtin_memcpy(dst, _scstr, _mcstr); \
+    dv_##dst.cur_len = _mcstr; \
+    FASTSTR_TERM(dst, _mcstr); \
 } while(0)
+
+/* -------------------------------------------------- */
+/* 5. Comparison & I/O Helpers                        */
+/* -------------------------------------------------- */
+
+/* 
+#define CMP(a,b) FSS_CMP(a,&dv_##a,b,&dv_##b)
+
+
+#define FSS_CMP(a, am, b, bm, ret) do { \
+    uint32_t _al = (am)->cur_len; \
+    uint32_t _bl = (bm)->cur_len; \
+    uint32_t _min = (_al < _bl) ? _al : _bl; \
+    int _r = __builtin_memcmp((a), (b), _min); \
+    if (_r != 0) { \
+        (ret) = _r; \
+    } else { \
+        (ret) = (_al < _bl) ? -1 : ((_al > _bl) ? 1 : 0); \
+    } \
+} while (0)
+*/ 
+
+#define CMP(a, b) ({ \
+    uint32_t _al = dv_##a.cur_len; \
+    uint32_t _bl = dv_##b.cur_len; \
+    uint32_t _min = (_al < _bl) ? _al : _bl; \
+    int _r = __builtin_memcmp((a), (b), _min); \
+    if (_r != 0) \
+        _r; \
+    else \
+        (_al < _bl) ? -1 : ((_al > _bl) ? 1 : 0); \
+})
  
-/* -------------------------------------------------- */
-/* Comparisons & Helpers                              */
-/* -------------------------------------------------- */
+/*---------------------------------------------
+ * Debug helper
+ *---------------------------------------------*/
+#define FSS_DEBUG(x) \
+    printf(#x " = [%.*s] (len=%u)\n", \
+           (int)dv_##x.cur_len, (x), dv_##x.cur_len)
 
-#define CMP(a,b) fss_cmp(a,&dv_##a,b,&dv_##b)
-static inline int fss_cmp(const char *a,
-    const vb_meta_t *am, const char *b, const vb_meta_t *bm) {
-    uint32_t al = am->cur_len, bl = bm->cur_len;
-    uint32_t min = (al < bl) ? al : bl;
-    int r = memcmp(a, b, min);
-    if (r != 0) return r;
-    return (al < bl) ? -1 : (al > bl ? 1 : 0);
-}
+#define dumpvar(x) \
+    printf(#x " = [%.*s] (len=%u)\n", \
+           (int)dv_##x.cur_len, (x), dv_##x.cur_len)
 
-#define EQ(a,b) (CMP(a,b)==0)
-#define dumpvar(x)   \
-printf("VARDUMP %-10s len=%u max=%u value='%.*s'\n", \
-#x, dv_##x.cur_len, dv_##x.max_len, dv_##x.cur_len, x)
+#define GET_REC(h, name, stat) VB_Get(h, name, sizeof(name), &stat) //
 
 #endif
