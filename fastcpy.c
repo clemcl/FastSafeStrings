@@ -13,8 +13,44 @@
 #include <stdint.h>
 #include "faststr.h"
 
+#include <immintrin.h>
+#include <stddef.h>
+
+#include <immintrin.h>
+#include <stddef.h>
+
+__attribute__((target("avx2")))
+int avx2_memcmp(const void *a, const void *b, size_t n)
+{
+    const unsigned char *pa = (const unsigned char *)a;
+    const unsigned char *pb = (const unsigned char *)b;
+
+    while (n >= 32)
+    {
+        __m256i va = _mm256_loadu_si256((const __m256i*)pa);
+        __m256i vb = _mm256_loadu_si256((const __m256i*)pb);
+
+        __m256i cmp = _mm256_cmpeq_epi8(va, vb);
+        int mask = _mm256_movemask_epi8(cmp);
+
+        if (mask != -1)
+            break;
+
+        pa += 32;
+        pb += 32;
+        n -= 32;
+    }
+
+    for (size_t i = 0; i < n; i++)
+        if (pa[i] != pb[i])
+            return (int)pa[i] - (int)pb[i];
+
+    return 0;
+}
+ 
+ 
 #define ITER 50000000
-#define STRINGLEN 32
+#define STRINGLEN 400
 
 volatile unsigned long bench_sink = 0;
  
@@ -103,6 +139,7 @@ int main(void)
 
     memset(fstr,'A',STRINGLEN);
     fstr[STRINGLEN-1]='\0';
+    dv_fstr.cur_len = STRINGLEN - 1;  // <-- Update the descriptor length!
      
     CPY_CSTR(fa,fstr);  // Copy string and set length
     CPY_CSTR(fb,fstr);   
@@ -138,7 +175,7 @@ int main(void)
     for(int i=0;i<ITER;i++)
     {
   //     memcpy(fa, fb, LEN(fb));   // .3
-         fb[STRINGLEN-10]=(char) i & 7 ;
+         fb[STRINGLEN-2]=(char) i & 7 ;
 
          CPY(fa,fb);
 
@@ -166,8 +203,9 @@ int main(void)
 
     for(int i=0;i<ITER;i++)
     {
-         strcmp(fa,fb);
-         bench_sink +=1; 
+              bench_sink += strcmp(fa,fb);
+         fb[STRINGLEN-2- (i &7)]=(char) i & 7 ;
+ //        bench_sink +=1; 
     }
 
     end = clock();
@@ -179,8 +217,10 @@ int main(void)
 
     for(int i=0;i<ITER;i++)
     {
-        CMP(fa,fb);
-        bench_sink +=1; 
+             bench_sink += __builtin_memcmp(fa,fb,400); // CMP(fa,fb);
+ //            bench_sink += avx2_memcmp(fa,fb,400); // CMP(fa,fb);
+         fb[STRINGLEN-2 -(i &7)]=(char) i & 7 ;
+ //       bench_sink +=1; 
     }
 
     end = clock();

@@ -1,9 +1,40 @@
+/******************************************************************************
+ * PROJECT:      FastSafeStrings (FSS) & VBIO
+ *
+ * AUTHOR:       Clement Victor Clarke (Warracknabeal, Australia)
+ * COPYRIGHT:    Copyright © 1989-2026 Clement Victor Clarke (Originator of Jol). 
+ * All Rights Reserved.
+ *
+ * * VERSION:      2.0 (May 2026)
+ *
+ * * PHILOSOPHY:   This library prioritizes Data Integrity and Energy Efficiency.
+ * Based on String Descriptor logic, it is designed to eliminate 
+ * the multiple scanning friction of standard C strings, looking for
+ * string terminators (binary 0) or Line Feeds in FGETS.
+ *
+ * * INTEGRITY:    Strict "Fail-and-Report" Policy. This implementation explicitly 
+ * rejects quiet truncation. If data exceeds target capacity, 
+ * an exception MUST be raised to preserve system accountability.
+ *
+ * MISSION: To reduce global energy consumption through computational efficiency.
+ *
+ * * LICENSE TERMS:
+ * 1. INDIVIDUAL/NON-PROFIT: Use is free under the MIT License.
+ * 2. COMMERCIAL: Use by entities with annual revenue > $1M AUD requires
+ *    a paid Commercial License.
+ *
+ * CONTACT: [clemclarke@gmail.com] for commercial terms and "Shared Savings" agreements.
+ *
+ ******************************************************************************/
+
+  
 #ifndef FASTSTR_BEST_H
 #define FASTSTR_BEST_H
 
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include "vbx_file.h"
 
 
 /*
@@ -24,25 +55,23 @@
 // Any __builtin_ function used here will optimize to raw assembly instructions
 
 #if defined(__clang__)
-  /* clang doesn't support builtin either */
-//  #define __builtin_memcpy   memcpy
   #pragma inline
 #elif __BORLANDC__
-//  #pragma option -6
-//  #pragma inline
   #pragma intrinsic memcpy
   #define __builtin_memcpy   memcpy
 //  #define __builtin_constant_p 
 #elif defined(__GNUC__)
  #pragma GCC optimize ("O2")
-#elif defined(__xclang__)
-  #define __builtin_memcmp   memcmp
 #elif defined(__IBMC__) || defined(__xlC__)
   /* XLC handles inlining via JCL optimization parameters */
   #define __builtin_memcpy   memcpy
 #endif
 
-//  #define __builtinmemcpy   memcpy
+
+#define FSS_ABEND(code, msg) do { \
+    fprintf(stderr, "FSS ABEND %s: %s at line %d\n", code, msg, __LINE__); \
+    exit(1); \
+} while(0
  
 /* -------------------------------------------------- */
 /* 1. Metadata & Structures                           */
@@ -65,48 +94,9 @@ typedef struct {
     vb_meta_t *meta;
 } fss_string; //
 
-/* -------------------------------------------------- */
-/* 2. Tiered Memory Movement                          */
-/* -------------------------------------------------- */
-
-#define FSS_MOVE_FAST(dest, src, len) do { \
-    size_t _l = (len); \
-    char *_d = (char*)(dest); \
-    const char *_s = (const char*)(src); \
-    /* Just do it. Modern CPUs handle the alignment internally. */ \
-    while (_l >= 8) { \
-        *(uint64_t*)_d = *(uint64_t*)_s; \
-        _d += 8; _s += 8; _l -= 8; \
-    } \
-    while (_l--) *_d++ = *_s++; \
-} while(0)
- 
-// 8-byte Unrolled Move for large blocks (from faststr.h)
-// awful code. degrades to single byte copy if not on 8-byte boundary!
-#define FSS_MOVE_FASTcvc(dest, src, len) do { \
-    size_t _l = (len); \
-    char *_d = (char*)(dest); \
-    const char *_s = (const char*)(src); \
-    if (_l >= 64 && (((uintptr_t)_d | (uintptr_t)_s) & 7) == 0) { \
-        while (_l >= 8) { \
-            *(uint64_t*)_d = *(uint64_t*)_s; \
-            _d += 8; _s += 8; _l -= 8; \
-        } \
-    } \
-    while (_l--) *_d++ = *_s++; \
-} while(0)
-
 
 /* -------------------------------------------------- */
-/* 2. Tiered Memory Movement (Fixed for GCC)          */
-/* -------------------------------------------------- */
-
-#define FSS_COPY_BEST(dst, src, len) do { \
-        __builtin_memcpy(dst, src, len); \
-} while(0)
- 
-/* -------------------------------------------------- */
-/* 3. Core API (DCL, SET, CPY, CAT)                   */
+/*  Core API (DCL, SET, CPY, CAT)                     */
 /* -------------------------------------------------- */
 
 #define LEN(name) (dv_##name.cur_len)    
@@ -118,17 +108,11 @@ typedef struct {
     #define ALIGN_16 
 #endif
 
-// 2. Use that cleanly inside your main macro definition
 #define DCL(name, size) \
     ALIGN_16 char name[(size) + 1] = {0}; \
     vb_meta_t dv_##name = {0, (size)}; \
     fss_string fs_##name = { name, &dv_##name }
  
-#define DCLx(name, size) \
-    char name[(size) + 1] = {0}; \
-    vb_meta_t dv_##name = {0, (size)}; \
-    fss_string fs_##name = { name, &dv_##name } 
-
 #define SET(dst, lit) do { \
     uint32_t _llen = (uint32_t)(sizeof(lit)-1); \
     uint32_t _m = (_llen > dv_##dst.max_len) ? dv_##dst.max_len : _llen; \
@@ -159,7 +143,7 @@ typedef struct {
 } while(0) //
 
 /* -------------------------------------------------- */
-/* 4. Advanced Features (VIEW, Substr, C-Strings)     */
+/*  Advanced Features (VIEW, Substr, C-Strings)       */
 /* -------------------------------------------------- */
 
 // Zero-copy substring (from faststrnew.h)
@@ -185,33 +169,30 @@ typedef struct {
 /* 5. Comparison & I/O Helpers                        */
 /* -------------------------------------------------- */
 
-/* 
-#define CMP(a,b) FSS_CMP(a,&dv_##a,b,&dv_##b)
+#if defined(__BORLANDC__) && !defined(__clang__)
+    /* --- Pure Legacy Borland C (e.g., v5.0) Fallback --- */
+    /* Only compilers that are strictly legacy Borland enter here. */
+    static __inline int borland_cmp_helper(const void* a, uint32_t al, const void* b, uint32_t bl) {
+        uint32_t min_len = (al < bl) ? al : bl;
+        int r = memcmp(a, b, min_len);
+        if (r != 0) return r;
+        return (al < bl) ? -1 : ((al > bl) ? 1 : 0);
+    }
+    
+    #define CMP(a, b) borland_cmp_helper((a), dv_##a.cur_len, (b), dv_##b.cur_len)
 
-
-#define FSS_CMP(a, am, b, bm, ret) do { \
-    uint32_t _al = (am)->cur_len; \
-    uint32_t _bl = (bm)->cur_len; \
-    uint32_t _min = (_al < _bl) ? _al : _bl; \
-    int _r = __builtin_memcmp((a), (b), _min); \
-    if (_r != 0) { \
-        (ret) = _r; \
-    } else { \
-        (ret) = (_al < _bl) ? -1 : ((_al > _bl) ? 1 : 0); \
-    } \
-} while (0)
-*/ 
-
-#define CMP(a, b) ({ \
-    uint32_t _al = dv_##a.cur_len; \
-    uint32_t _bl = dv_##b.cur_len; \
-    uint32_t _min = (_al < _bl) ? _al : _bl; \
-    int _r = __builtin_memcmp((a), (b), _min); \
-    if (_r != 0) \
-        _r; \
-    else \
-        (_al < _bl) ? -1 : ((_al > _bl) ? 1 : 0); \
-})
+#else
+    /* --- Modern Path (GCC, Native Clang, and Embarcadero bcc32x) --- */
+    /* Since bcc32x defines __clang__, it cleanly skips the legacy block 
+       and executes this high-performance optimization. */
+    #define CMP(a, b) ({ \
+        uint32_t _al = dv_##a.cur_len; \
+        uint32_t _bl = dv_##b.cur_len; \
+        uint32_t _min = (_al < _bl) ? _al : _bl; \
+        int _r = __builtin_memcmp((a), (b), _min); \
+        (_r != 0) ? _r : ((_al < _bl) ? -1 : ((_al > _bl) ? 1 : 0)); \
+    })
+#endif
  
 /*---------------------------------------------
  * Debug helper
@@ -224,6 +205,30 @@ typedef struct {
     printf(#x " = [%.*s] (len=%u)\n", \
            (int)dv_##x.cur_len, (x), dv_##x.cur_len)
 
-#define GET_REC(h, name, stat) VB_Get(h, name, sizeof(name), &stat) //
+/* -------------------------------------------------- */
+/* High-Speed I/O Macros                              */
+/* -------------------------------------------------- */
+
+vb_handle_t *VB_Open(const char *path, const char *mode_str, uint32_t block_size) ;
+vb_handle_t *VB_OpenRead(const char *path,  const char *translate);
+vb_handle_t *VB_OpenWrite(const char *path, uint32_t block_size,  const char *translate);
+ 
+/* Reads a record directly into a DCL'd buffer
+   and updates its Dope Vector.*/
+/*  GET_REC(handle, dcl_name, status_var) */
+
+#define GET_REC(h, name, stat)  \
+    VB_Get(h, name, sizeof(name), &stat)
+
+#define PUT_REC(h, name) \
+    VB_Put((h), (name), dv_##name.cur_len)
+
+#define FIND_REC(h, skip_count, stat) do { \
+    uint32_t _i; (stat) = 1; \
+    for (_i = 0; _i < (skip_count); _i++) { \
+        if (VB_Skip((h), NULL) <= 0) { (stat) = 0; break; } \
+    } \
+} while(0)
+ 
 
 #endif

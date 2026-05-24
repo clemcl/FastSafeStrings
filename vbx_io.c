@@ -1,3 +1,33 @@
+/******************************************************************************
+ * PROJECT:      FastSafeStrings (FSS) & VBIO
+ *
+ * AUTHOR:       Clement Victor Clarke (Warracknabeal, Australia)
+ * COPYRIGHT:    Copyright © 1989-2026 Clement Victor Clarke (Originator of Jol). 
+ * All Rights Reserved.
+ *
+ * * VERSION:      2.0 (May 2026)
+ *
+ * * PHILOSOPHY:   This library prioritizes Data Integrity and Energy Efficiency.
+ * Based on String Descriptor logic, it is designed to eliminate 
+ * the multiple scanning friction of standard C strings, looking for
+ * string terminators (binary 0) or Line Feeds in FGETS.
+ *
+ * * INTEGRITY:    Strict "Fail-and-Report" Policy. This implementation explicitly 
+ * rejects quiet truncation. If data exceeds target capacity, 
+ * an exception MUST be raised to preserve system accountability.
+ *
+ * MISSION: To reduce global energy consumption through computational efficiency.
+ *
+ * * LICENSE TERMS:
+ * 1. INDIVIDUAL/NON-PROFIT: Use is free under the MIT License.
+ * 2. COMMERCIAL: Use by entities with annual revenue > $1M AUD requires
+ *    a paid Commercial License.
+ *
+ * CONTACT: [clemclarke@gmail.com] for commercial terms and "Shared Savings" agreements.
+ *
+ ******************************************************************************/
+
+  
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,22 +37,9 @@
 #include "vbx_file.h"
  
  
-
-/* * Copyright (c) 1988-2026 Clement Victor Clarke (Originator of Jol)
- * Project: FastSafeStrings & vbio 
- * * LICENSE TERMS:
- * 1. INDIVIDUAL/NON-PROFIT: Use is free under the MIT License.
- * 2. COMMERCIAL: Use by entities with annual revenue > $1M AUD requires
- * a paid Commercial License.
- *
- * MISSION: To reduce global energy consumption through computational efficiency.
- * CONTACT: [clemclarke@gmail.com] for commercial terms and "Shared Savings" agreements.
- */
- 
- 
 #ifdef __BORLANDC__
   #pragma option -6
-  #pragma option P  
+//  #pragma option P  
   #pragma intrinsic memcpy
 //  #pragma inline
   #define __builtin_memcpy   memcpy
@@ -305,13 +322,14 @@ void VB_Close(vb_handle_t *vb) {
 void print_build_identity() {
     printf("--- Build Identity ---\n");
     printf("File: %s\n", __FILE__);
+    printf("Date: %s\n", __DATE__);
     
     #if defined(__clang__)
         printf("Compiler: Clang %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
     #elif defined(__GNUC__) || defined(__GNUG__)
         printf("Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
     #elif defined(__BORLANDC__)
-        printf("Compiler: Borland %0X)\n", __BORLANDC__);
+        printf("Compiler: Borland %0X\n", __BORLANDC__);
     #elif defined(_MSC_VER)
         printf("Compiler: Microsoft Visual C++ (Internal Version %d)\n", _MSC_VER);
     #elif defined(__xlC__)
