@@ -1,45 +1,55 @@
 These are the results of running the Faststr.bat and Var_bench.c 
-programs on a Lenovo I7 Notebook on September 4, 2026
+programs on a Lenovo I7 Notebook on September 20, 2026
 with Windows 10.
  
 FastSafeStrings Variable Character Benchmark (Fixed)
 ===================================================
 
 Compiled with GCC 15.2.0
+File: Var_bench.c
+Date: Sep 20 2026
+Compiler is 64 bit.
+
 === BENCHMARKING SIZE: 16 bytes (10000000 iterations) ===
-  Length -> C: 0.066000 s | FSS: 0.022000 s | Speedup: 3.00x
-  Copy   -> C: 0.088000 s | FSS: 0.065000 s | Speedup: 1.35x
-  Concat -> C: 0.083000 s | FSS: 0.035000 s | Speedup: 2.37x
-  Compare-> C: 0.180000 s | FSS: 0.084000 s | Speedup: 2.14x
+  Loop Overhead Base Time (Subtracted from Timings)     : 0.023694 s
+  Length -> C: 0.490871 s | FSS: 0.107944 s | Speedup: 4.55x  (50000000 iters)
+  Copy   -> C: 0.070256 s | FSS: 0.041374 s | Speedup: 1.70x
+  Concat -> C: 0.075553 s | FSS: 0.078429 s | Speedup: 0.96x
+  Compare-> C: 0.094645 s | FSS: 0.066352 s | Speedup: 1.43x
 
 === BENCHMARKING SIZE: 64 bytes (10000000 iterations) ===
-  Length -> C: 0.132000 s | FSS: 0.024000 s | Speedup: 5.50x
-  Copy   -> C: 0.158000 s | FSS: 0.093000 s | Speedup: 1.70x
-  Concat -> C: 0.153000 s | FSS: 0.087000 s | Speedup: 1.76x
-  Compare-> C: 0.232000 s | FSS: 0.092000 s | Speedup: 2.52x
+  Loop Overhead Base Time (Subtracted from Timings)     : 0.023215 s
+  Length -> C: 0.704875 s | FSS: 0.109580 s | Speedup: 6.43x  (50000000 iters)
+  Copy   -> C: 0.161356 s | FSS: 0.084183 s | Speedup: 1.92x
+  Concat -> C: 0.154208 s | FSS: 0.062074 s | Speedup: 2.48x
+  Compare-> C: 0.123000 s | FSS: 0.069596 s | Speedup: 1.77x
 
 === BENCHMARKING SIZE: 256 bytes (5000000 iterations) ===
-  Length -> C: 0.213000 s | FSS: 0.013000 s | Speedup: 16.38x
-  Copy   -> C: 0.242000 s | FSS: 0.057000 s | Speedup: 4.25x
-  Concat -> C: 0.245000 s | FSS: 0.062000 s | Speedup: 3.95x
-  Compare-> C: 0.279000 s | FSS: 0.064000 s | Speedup: 4.36x
+  Loop Overhead Base Time (Subtracted from Timings)     : 0.011392 s
+  Length -> C: 1.968498 s | FSS: 0.108189 s | Speedup: 18.19x  (50000000 iters)
+  Copy   -> C: 0.236429 s | FSS: 0.052234 s | Speedup: 4.53x
+  Concat -> C: 0.340037 s | FSS: 0.079121 s | Speedup: 4.30x
+  Compare-> C: 0.180521 s | FSS: 0.059729 s | Speedup: 3.02x
 
 === BENCHMARKING SIZE: 1024 bytes (5000000 iterations) ===
-  Length -> C: 0.584000 s | FSS: 0.011000 s | Speedup: 53.09x
-  Copy   -> C: 0.870000 s | FSS: 0.146000 s | Speedup: 5.96x
-  Concat -> C: 0.856000 s | FSS: 0.133000 s | Speedup: 6.44x
-  Compare-> C: 0.918000 s | FSS: 0.153000 s | Speedup: 6.00x
+  Loop Overhead Base Time (Subtracted from Timings)     : 0.012185 s
+  Length -> C: 6.283641 s | FSS: 0.113083 s | Speedup: 55.57x  (50000000 iters)
+  Copy   -> C: 0.879810 s | FSS: 0.140820 s | Speedup: 6.25x
+  Concat -> C: 0.879832 s | FSS: 0.131209 s | Speedup: 6.71x
+  Compare-> C: 0.461579 s | FSS: 0.171958 s | Speedup: 2.68x
 
 === BENCHMARKING SIZE: 4096 bytes (1000000 iterations) ===
-  Length -> C: 0.402000 s | FSS: 0.002000 s | Speedup: 201.00x
-  Copy   -> C: 0.623000 s | FSS: 0.095000 s | Speedup: 6.56x
-  Concat -> C: 0.621000 s | FSS: 0.095000 s | Speedup: 6.54x
-  Compare-> C: 0.653000 s | FSS: 0.114000 s | Speedup: 5.73x
+  Loop Overhead Base Time (Subtracted from Timings)     : 0.002673 s
+  Length -> C: 21.125100 s | FSS: 0.111373 s | Speedup: 189.68x  (50000000 iters)
+  Copy   -> C: 0.652729 s | FSS: 0.096227 s | Speedup: 6.78x
+  Concat -> C: 0.654036 s | FSS: 0.095131 s | Speedup: 6.88x
+  Compare-> C: 0.338821 s | FSS: 0.110321 s | Speedup: 3.07x
 
 === BENCHMARKING SIZE: 16384 bytes (1000000 iterations) ===
-  Length -> C: 1.545000 s | FSS: 0.002000 s | Speedup: 772.50x
-  Copy   -> C: 2.378000 s | FSS: 0.400000 s | Speedup: 5.95x
-  Concat -> C: 2.388000 s | FSS: 0.438000 s | Speedup: 5.45x
-  Compare-> C: 2.562000 s | FSS: 0.430000 s | Speedup: 5.96x
+  Loop Overhead Base Time (Subtracted from Timings)     : 0.002359 s
+  Length -> C: 81.234317 s | FSS: 0.099171 s | Speedup: 819.13x  (50000000 iters)
+  Copy   -> C: 2.651565 s | FSS: 0.396846 s | Speedup: 6.68x
+  Concat -> C: 2.491900 s | FSS: 0.529406 s | Speedup: 4.71x
+  Compare-> C: 1.434023 s | FSS: 0.467103 s | Speedup: 3.07x
 
-Sink verification value: 3653425152
+Sink verification value: 4117646336

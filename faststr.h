@@ -32,10 +32,8 @@
  *   - Fixed VIEW: self-reference of uninitialised dv_ struct (undefined behaviour)
  *   - Fixed SUBSTR: missing null terminator after memcpy
  *   - Fixed GET_REC: silently-ignored stat parameter documented and cleaned up
- *   - Removed CAT_LITold (dead code)
  *   - Removed no-op '#pragma inline' on Clang path
  *   - Added comment identifying Embarcadero (Clang-based Borland) path
- *   - Made dumpvar() an alias of FSS_DEBUG() (was a duplicate)
  *   - Added CLEAR() macro (documented in README but missing from header)
  *   - Added CATCHAR() macro (documented in README but missing from header)
  *   - Added FSS_VERSION_MAJOR / FSS_VERSION_MINOR / FSS_VERSION_STR
@@ -233,24 +231,8 @@ typedef struct {
  *   Copy FSS string src into dst. Truncates if src > dst capacity.
  *   Both src and dst must be DCL'd strings.
  */
-#define CPY(dst, src) do { \
-    if (__builtin_constant_p(dv_##src.cur_len) && dv_##src.cur_len <= (sizeof(dst) - 1)) { \
-        /* STATIC FAST-PATH: The compiler proves it fits ahead of time. */ \
-        /* No runtime bounds-checking or conditional branches are generated! */ \
-        __builtin_memcpy(dst, src, dv_##src.cur_len); \
-        dv_##dst.cur_len = dv_##src.cur_len; \
-        (dst)[dv_##src.cur_len] = '\0'; \
-    } else { \
-        /* DYNAMIC SAFE-PATH: Fallback for unpredictable runtime lengths. */ \
-        uint32_t _m = (dv_##src.cur_len > (sizeof(dst) - 1)) \
-                      ? (sizeof(dst) - 1) : dv_##src.cur_len; \
-        __builtin_memcpy(dst, src, _m); \
-        dv_##dst.cur_len = _m; \
-        (dst)[_m] = '\0'; \
-    } \
-} while(0)
  
-#define CPYborl(dst, src) do { \
+#define CPY(dst, src) do { \
     uint32_t _m = (dv_##src.cur_len > (sizeof(dst) - 1)) \
                   ? (sizeof(dst) - 1) : dv_##src.cur_len; \
     __builtin_memcpy(dst, src, _m); \
@@ -283,35 +265,8 @@ typedef struct {
  *   Append FSS string src to dst. O(1) — uses stored lengths, no scanning.
  *   Truncates silently if combined length exceeds dst capacity.
  */
-#define CAT(dst, src) do { \
-    if (__builtin_constant_p(dv_##src.cur_len)) { \
-        /* STATIC CONSTANT FAST-PATH */ \
-        /* The compiler knows src's length at compile-time. */ \
-        uint32_t _slen  = dv_##src.cur_len; \
-        uint32_t _dlen  = dv_##dst.cur_len; \
-        uint32_t _space = (sizeof(dst) - 1) - _dlen; \
-        uint32_t _m     = (_slen < _space) ? _slen : _space; \
-        if (_m) { \
-            __builtin_memcpy((dst) + _dlen, (src), _m); \
-            dv_##dst.cur_len = _dlen + _m; \
-            (dst)[_dlen + _m] = '\0'; \
-        } \
-    } else { \
-        /* DYNAMIC SAFE RUNTIME FALLBACK */ \
-        uint32_t _dlen  = dv_##dst.cur_len; \
-        uint32_t _slen  = dv_##src.cur_len; \
-        uint32_t _space = (sizeof(dst) - 1) - _dlen; \
-        uint32_t _m     = (_slen < _space) ? _slen : _space; \
-        if (_m) { \
-            __builtin_memcpy((dst) + _dlen, (src), _m); \
-            _dlen += _m; \
-            dv_##dst.cur_len = _dlen; \
-            (dst)[_dlen] = '\0'; \
-        } \
-    } \
-} while (0)
  
-#define CATborland(dst, src) do { \
+#define CAT(dst, src) do { \
     uint32_t _dlen  = dv_##dst.cur_len; \
     uint32_t _slen  = dv_##src.cur_len; \
     uint32_t _space = (sizeof(dst) - 1) - _dlen; \

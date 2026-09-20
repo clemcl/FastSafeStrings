@@ -1,0 +1,45 @@
+These are the results of running the Faststr.bat and Var_bench.c 
+programs on a Lenovo I7 Notebook on September 4, 2026
+with Windows 10.
+ 
+FastSafeStrings Variable Character Benchmark (Fixed)
+===================================================
+
+Compiled with GCC 15.2.0
+=== BENCHMARKING SIZE: 16 bytes (10000000 iterations) ===
+  Length -> C: 0.066000 s | FSS: 0.022000 s | Speedup: 3.00x
+  Copy   -> C: 0.088000 s | FSS: 0.065000 s | Speedup: 1.35x
+  Concat -> C: 0.083000 s | FSS: 0.035000 s | Speedup: 2.37x
+  Compare-> C: 0.180000 s | FSS: 0.084000 s | Speedup: 2.14x
+
+=== BENCHMARKING SIZE: 64 bytes (10000000 iterations) ===
+  Length -> C: 0.132000 s | FSS: 0.024000 s | Speedup: 5.50x
+  Copy   -> C: 0.158000 s | FSS: 0.093000 s | Speedup: 1.70x
+  Concat -> C: 0.153000 s | FSS: 0.087000 s | Speedup: 1.76x
+  Compare-> C: 0.232000 s | FSS: 0.092000 s | Speedup: 2.52x
+
+=== BENCHMARKING SIZE: 256 bytes (5000000 iterations) ===
+  Length -> C: 0.213000 s | FSS: 0.013000 s | Speedup: 16.38x
+  Copy   -> C: 0.242000 s | FSS: 0.057000 s | Speedup: 4.25x
+  Concat -> C: 0.245000 s | FSS: 0.062000 s | Speedup: 3.95x
+  Compare-> C: 0.279000 s | FSS: 0.064000 s | Speedup: 4.36x
+
+=== BENCHMARKING SIZE: 1024 bytes (5000000 iterations) ===
+  Length -> C: 0.584000 s | FSS: 0.011000 s | Speedup: 53.09x
+  Copy   -> C: 0.870000 s | FSS: 0.146000 s | Speedup: 5.96x
+  Concat -> C: 0.856000 s | FSS: 0.133000 s | Speedup: 6.44x
+  Compare-> C: 0.918000 s | FSS: 0.153000 s | Speedup: 6.00x
+
+=== BENCHMARKING SIZE: 4096 bytes (1000000 iterations) ===
+  Length -> C: 0.402000 s | FSS: 0.002000 s | Speedup: 201.00x
+  Copy   -> C: 0.623000 s | FSS: 0.095000 s | Speedup: 6.56x
+  Concat -> C: 0.621000 s | FSS: 0.095000 s | Speedup: 6.54x
+  Compare-> C: 0.653000 s | FSS: 0.114000 s | Speedup: 5.73x
+
+=== BENCHMARKING SIZE: 16384 bytes (1000000 iterations) ===
+  Length -> C: 1.545000 s | FSS: 0.002000 s | Speedup: 772.50x
+  Copy   -> C: 2.378000 s | FSS: 0.400000 s | Speedup: 5.95x
+  Concat -> C: 2.388000 s | FSS: 0.438000 s | Speedup: 5.45x
+  Compare-> C: 2.562000 s | FSS: 0.430000 s | Speedup: 5.96x
+
+Sink verification value: 3653425152

@@ -1,6 +1,6 @@
 /* vbexamp01.c */
 
-/* This shows how to use the VB File sysstem using
+/* This shows how to use the VB File system using
    Standard C Strings.
     
    To see the VB File system using the Fasst safe strings, 
