@@ -1,0 +1,55 @@
+# Build output directories
+build/
+bin/
+lib/
+out/
+dist/
+CMakeFiles/
+Testing/
+
+# Compiler and Linker artifacts
+*.exe
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.dylib
+*.so
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.ipch
+
+# CMake generated files
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
+Makefile
+
+# IDE and Editor files
+.vs/
+.vscode/
+.idea/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+
+# Temporary, backup and binary docs
+*.bak
+*.tmp
+*~
+*.swp
+*.doc
+*.docx
+*.pdf
+
+# Test runtime files
+*.vbf
+*.dat
+temp_*

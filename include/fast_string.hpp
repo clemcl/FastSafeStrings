@@ -1,6 +1,5 @@
 /******************************************************************************
  * PROJECT:       FastSafeStrings (FSS) & VBIO
- *
  * FILE:         fast_string.hpp
  * DESCRIPTION:  Modern C++17/C++20 fixed-capacity, length-aware string class
  *               with zero heap allocation, full constexpr support, and
@@ -21,7 +20,7 @@
  * CONTACT:       clemclarke@gmail.com for commercial terms and
  *                "Shared Savings" agreements.
  ******************************************************************************/
-
+  
 #ifndef FAST_STRING_HPP
 #define FAST_STRING_HPP
 
